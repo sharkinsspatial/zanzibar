@@ -7,10 +7,10 @@ const jwt = require('jsonwebtoken');
 const delay = require('delay');
 require('dotenv').config();
 
-const contents = fs.readFileSync('./output.json');
+const contents = fs.readFileSync('./101_150.json');
 const images = JSON.parse(contents);
 
-const postPromises = images.map(image => {
+images.forEach(image => {
   const startDate = new Date(`${image['DATE START']} GMT`);
   const startString = startDate.toISOString();
   const completeDate = new Date(`${image['DATE OF COMPLETION']} GMT`);
@@ -33,13 +33,14 @@ const postPromises = images.map(image => {
       sensor: encodeURIComponent(image.platform),
       acquisition_start: encodeURIComponent(startString),
       acquisition_end: encodeURIComponent(completeString),
-      title: encodeURIComponent(image.zone_ID),
+      title: encodeURIComponent(image.OAM_LABEL),
       provider: encodeURIComponent(image.Attribution),
       tags: ''
     }
   });
-  const paddedId = padStart(image.zone_ID, 3, '0');
-  const downloadPath = `http://195.154.41.149/download/U_${paddedId}_V1.tif`
+  //const paddedId = padStart(image.zone_ID, 3, '0');
+  //const downloadPath = `http://195.154.41.149/download/U_${paddedId}_V1.tif`
+  const downloadPath = `https://s3.eu-west-2.amazonaws.com/s3storage02public.imgeospatial.com/World+Bank/101-150/${image['File Name']}.tif`;
   const options = {
     method: 'POST',
     uri: url,
@@ -49,15 +50,16 @@ const postPromises = images.map(image => {
     json: true
   };
   const postPromise = rp(options).then(delay(5000));
-  return postPromise;
-});
-
-Promise.all(postPromises)
-  .then(values => {
-    console.log(values);
+  postPromise.then((value) => {
+    if (value.results) {
+      const url = `https://map.openaerialmap.org/#/upload/status/${value.results.upload}`
+      console.log(url);
+    } else {
+      console.log(image.OAM_LABEL, ' Failed');
+    }
   })
-  .catch(error => {
-    console.log(error);
+  .catch((error) => {
+    console.log(error.message);
   });
-
+});
 
